@@ -1,0 +1,21 @@
+{
+    "name": "Llista de Tasques",
+    "short_name": "Checklist",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#f2f2f7",
+    "theme_color": "#ffffff",
+    "description": "Una llista de tasques simple amb suport per a càmera",
+    "icons": [
+        {
+            "src": "https://placehold.co/192x192/007aff/ffffff.png?text=Task",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "https://placehold.co/512x512/007aff/ffffff.png?text=Task",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

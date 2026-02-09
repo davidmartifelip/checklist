@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Llista de Tasques</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        :root {
+            --primary-color: #007aff;
+            --background-color: #f2f2f7;
+            --surface-color: #ffffff;
+            --text-color: #000000;
+            --secondary-text-color: #8e8e93;
+            --border-color: #c6c6c8;
+            --danger-color: #ff3b30;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 100px; /* Space for FAB */
+        }
+
+        header {
+            background-color: var(--surface-color);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: max(1rem, env(safe-area-inset-top));
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        #task-list {
+            list-style: none;
+            padding: 0;
+            margin: 1rem;
+        }
+
+        .task-item {
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: var(--secondary-text-color);
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .task-item.completed .checkbox {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .checkbox::after {
+            content: '';
+            width: 10px;
+            height: 5px;
+            border-left: 2px solid white;
+            border-bottom: 2px solid white;
+            transform: rotate(-45deg);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .task-item.completed .checkbox::after {
+            opacity: 1;
+        }
+
+        .task-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            overflow: hidden;
+        }
+
+        .task-text {
+            font-size: 1rem;
+            word-break: break-word;
+        }
+
+        .task-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            display: block;
+            object-fit: cover;
+            max-height: 200px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .icon-btn:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .icon-btn.delete {
+            color: var(--danger-color);
+        }
+        
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: max(2rem, env(safe-area-inset-bottom));
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,122,255,0.4);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            z-index: 1000;
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: flex-end; /* Bottom sheet style */
+            justify-content: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 2000;
+        }
+
+        .modal.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: var(--surface-color);
+            width: 100%;
+            max-width: 600px;
+            padding: 1.5rem;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            background-color: var(--background-color);
+        }
+
+        .camera-input-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .camera-btn {
+            background-color: var(--background-color);
+            border: 1px dashed var(--secondary-text-color);
+            border-radius: 8px;
+            padding: 1rem;
+            width: 100%;
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        #preview-image {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 8px;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Llista de Tasques</h1>
+</header>
+
+<ul id="task-list">
+    <!-- Tasks will be injected here -->
+</ul>
+
+<button class="fab" onclick="openModal()">+</button>
+
+<div class="modal" id="addTaskModal" onclick="if(event.target === this) closeModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">Nova Tasca</span>
+            <button class="icon-btn" onclick="closeModal()">✕</button>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="Què cal fer?" autofocus>
+        </div>
+
+        <div class="input-group">
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleImageSelect(event)">
+            <div class="camera-btn" onclick="document.getElementById('cameraInput').click()">
+                📷 Afegir Foto
+            </div>
+            <img id="preview-image" src="" alt="Vista prèvia">
+        </div>
+
+        <button class="submit-btn" onclick="addTask()">Afegir Tasca</button>
+    </div>
+</div>
+
+<script>
+    // --- State Management ---
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    let currentImageBase64 = null;
+
+    // --- DOM Elements ---
+    const taskListElement = document.getElementById('task-list');
+    const taskInput = document.getElementById('taskInput');
+    const modal = document.getElementById('addTaskModal');
+    const previewImage = document.getElementById('preview-image');
+    const cameraInput = document.getElementById('cameraInput');
+
+    // --- Core Functions ---
+    
+    function saveTasks() {
+        try {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        } catch (e) {
+            alert('Error desant: Espai ple o error de quota.');
+        }
+    }
+
+    function renderTasks() {
+        taskListElement.innerHTML = '';
+        tasks.forEach((task, index) => {
+            const li = document.createElement('li');
+            li.className = `task-item ${task.completed ? 'completed' : ''}`;
+            
+            let imageHtml = '';
+            if (task.image) {
+                imageHtml = `<img src="${task.image}" class="task-image" alt="Task attachment">`;
+            }
+
+            li.innerHTML = `
+                <div class="checkbox" onclick="toggleTask(${index})"></div>
+                <div class="task-content">
+                    <span class="task-text">${escapeHtml(task.text)}</span>
+                    ${imageHtml}
+                </div>
+                <div class="actions">
+                     <button class="icon-btn" onclick="openCameraForTask(${index})">📷</button>
+                     <button class="icon-btn delete" onclick="deleteTask(${index})">🗑️</button>
+                </div>
+                <!-- Hidden input for adding/updating photo to existing task -->
+                <input type="file" id="camera-update-${index}" accept="image/*" capture="environment" style="display: none;" onchange="updateTaskImage(event, ${index})">
+            `;
+            taskListElement.appendChild(li);
+        });
+    }
+
+    function addTask() {
+        const text = taskInput.value.trim();
+        if (!text && !currentImageBase64) return;
+
+        tasks.push({
+            text: text,
+            completed: false,
+            image: currentImageBase64,
+            timestamp: Date.now()
+        });
+
+        saveTasks();
+        renderTasks();
+        closeModal();
+    }
+
+    function toggleTask(index) {
+        tasks[index].completed = !tasks[index].completed;
+        saveTasks();
+        renderTasks();
+    }
+
+    function deleteTask(index) {
+        if(confirm('Segur que vols esborrar aquesta tasca?')) {
+            tasks.splice(index, 1);
+            saveTasks();
+            renderTasks();
+        }
+    }
+
+    // --- Image Handling ---
+
+    function handleImageSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImageBase64 = e.target.result;
+                previewImage.src = currentImageBase64;
+                previewImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Feature to add/change photo to an existing task
+    function openCameraForTask(index) {
+        document.getElementById(`camera-update-${index}`).click();
+    }
+
+    function updateTaskImage(event, index) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                tasks[index].image = e.target.result;
+                saveTasks();
+                renderTasks();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // --- UI Helpers ---
+
+    function openModal() {
+        modal.classList.add('active');
+        taskInput.focus();
+        // Reset inputs
+        taskInput.value = '';
+        currentImageBase64 = null;
+        previewImage.style.display = 'none';
+        cameraInput.value = '';
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // --- Service Worker Registration ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(registration => {
+                    console.log('SW Registered:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('SW Registration Failed:', error);
+                });
+        });
+    }
+
+    // --- Initialization ---
+    renderTasks();
+
+</script>
+</body>
+</html>
