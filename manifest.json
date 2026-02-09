@@ -1,7 +1,7 @@
 {
     "name": "Llista de Tasques",
     "short_name": "Checklist",
-    "start_url": "./index.html",
+    "start_url": "./",
     "display": "standalone",
     "background_color": "#f2f2f7",
     "theme_color": "#ffffff",
